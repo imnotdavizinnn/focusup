@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="FocusUp"/>
+  <meta name="theme-color" content="#0a0a0f"/>
+  <title>FocusUp — Ganhe seu Tempo</title>
+
+  <!-- PWA manifest inline via JS -->
+  <link rel="manifest" href="manifest.json"/>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1c1c28;
+      --accent: #7c3aed;
+      --accent2: #a855f7;
+      --gold: #f59e0b;
+      --green: #10b981;
+      --red: #ef4444;
+      --text: #f1f0ff;
+      --muted: #6b6b8a;
+      --border: rgba(124,58,237,0.2);
+      --glow: 0 0 40px rgba(124,58,237,0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      user-select: none;
+    }
+
+    /* ── SCREENS ── */
+    .screen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: env(safe-area-inset-top,20px) 20px env(safe-area-inset-bottom,20px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s ease;
+      overflow-y: auto;
+    }
+    .screen.active { opacity: 1; pointer-events: all; }
+
+    /* ── BACKGROUND MESH ── */
+    body::before {
+      content:'';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(124,58,237,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 80% 80%, rgba(168,85,247,0.1) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(245,158,11,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .screen > * { position: relative; z-index: 1; }
+
+    /* ── LOGO / HERO ── */
+    .logo {
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 0.3em; color: var(--accent2);
+      text-transform: uppercase; margin-bottom: 8px;
+    }
+    .hero-title {
+      font-size: clamp(2.4rem, 9vw, 3.2rem);
+      font-weight: 800; line-height: 1.05;
+      text-align: center;
+      background: linear-gradient(135deg, #fff 0%, var(--accent2) 60%, var(--gold) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    .hero-sub {
+      font-size: 15px; color: var(--muted); text-align: center;
+      max-width: 280px; line-height: 1.6; margin-bottom: 40px;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 16px 32px; border-radius: 16px; border: none;
+      font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s ease; width: 100%; max-width: 320px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; box-shadow: var(--glow);
+    }
+    .btn-primary:active { transform: scale(0.97); box-shadow: none; }
+    .btn-outline {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border); margin-top: 12px;
+      font-size: 14px;
+    }
+    .btn-green { background: linear-gradient(135deg, #059669, var(--green)); color: #fff; box-shadow: 0 0 30px rgba(16,185,129,0.3); }
+    .btn-gold  { background: linear-gradient(135deg, #d97706, var(--gold)); color: #fff; box-shadow: 0 0 30px rgba(245,158,11,0.3); }
+    .btn-red   { background: linear-gradient(135deg, #dc2626, var(--red)); color: #fff; }
+    .btn-sm { padding: 12px 20px; font-size: 14px; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      width: 100%; max-width: 360px;
+    }
+
+    /* ── TIMER DISPLAY ── */
+    #screen-timer { background: transparent; }
+
+    .timer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; max-width: 360px; margin-bottom: 24px;
+    }
+    .timer-label { font-size: 12px; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; }
+    .points-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3);
+      padding: 6px 14px; border-radius: 99px;
+      font-family: 'Space Mono', monospace; font-size: 14px; color: var(--gold);
+    }
+
+    .clock-ring {
+      position: relative; width: 220px; height: 220px; margin: 0 auto 28px;
+    }
+    .clock-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .clock-ring .bg-ring { fill: none; stroke: var(--surface2); stroke-width: 10; }
+    .clock-ring .prog-ring {
+      fill: none; stroke: url(#ringGrad); stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 628;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s linear;
+    }
+    .clock-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .time-display {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(2rem, 12vw, 2.8rem); font-weight: 700;
+      color: var(--text); line-height: 1;
+    }
+    .time-sublabel { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 0.15em; }
+
+    .sessions-row {
+      display: flex; gap: 10px; width: 100%; max-width: 360px; margin-bottom: 20px;
+    }
+    .session-card {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px; text-align: center;
+    }
+    .session-val { font-family: 'Space Mono', monospace; font-size: 18px; color: var(--accent2); }
+    .session-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    .timer-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 360px; }
+
+    /* ── LOCKED SCREEN ── */
+    #screen-locked {
+      background: rgba(0,0,0,0.95);
+    }
+    .locked-icon { font-size: 64px; margin-bottom: 20px; animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+    .locked-title { font-size: 28px; font-weight: 800; margin-bottom: 8px; text-align:center; }
+    .locked-sub { font-size: 14px; color: var(--muted); text-align:center; margin-bottom: 32px; max-width:280px; line-height:1.6; }
+
+    .tasks-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; width: 100%; max-width: 360px; margin-bottom: 24px;
+    }
+    .task-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 18px; padding: 16px 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      cursor: pointer; transition: all 0.2s ease; text-align: center;
+    }
+    .task-card:active { transform: scale(0.96); }
+    .task-card.selected {
+      border-color: var(--accent2); background: rgba(124,58,237,0.15);
+      box-shadow: 0 0 20px rgba(124,58,237,0.2);
+    }
+    .task-card .task-icon { font-size: 32px; }
+    .task-card .task-name { font-size: 13px; font-weight: 700; color: var(--text); }
+    .task-card .task-reward {
+      font-family: 'Space Mono', monospace; font-size: 11px;
+      color: var(--gold); background: rgba(245,158,11,0.1);
+      padding: 2px 8px; border-radius: 99px;
+    }
+
+    /* ── VERIFICATION SCREEN ── */
+    #screen-verify { justify-content: flex-start; padding-top: 60px; }
+
+    .verify-header {
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; max-width: 360px; margin-bottom: 24px;
+    }
+    .back-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 14px;
+      color: var(--text); font-size: 18px; cursor: pointer;
+    }
+    .verify-title { font-size: 20px; font-weight: 800; }
+    .verify-sub { font-size: 13px; color: var(--muted); }
+
+    .task-banner {
+      width: 100%; max-width: 360px;
+      background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(168,85,247,0.1));
+      border: 1px solid var(--border); border-radius: 18px;
+      padding: 20px; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .task-banner-icon { font-size: 40px; }
+    .task-banner-info h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .task-banner-info p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    .photo-area {
+      width: 100%; max-width: 360px; margin-bottom: 16px;
+    }
+    .photo-drop {
+      width: 100%; aspect-ratio: 4/3; background: var(--surface);
+      border: 2px dashed var(--border); border-radius: 18px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; cursor: pointer; transition: all 0.2s;
+      overflow: hidden; position: relative;
+    }
+    .photo-drop:active { border-color: var(--accent2); }
+    .photo-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 16px; }
+    .photo-drop-label { font-size: 14px; color: var(--muted); text-align: center; }
+    .photo-drop-icon { font-size: 36px; }
+    #fileInput { display: none; }
+
+    /* ── AI RESULT ── */
+    .ai-result {
+      width: 100%; max-width: 360px;
+      border-radius: 18px; padding: 20px;
+      margin-bottom: 16px; display: none;
+    }
+    .ai-result.success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); }
+    .ai-result.fail    { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.3); }
+    .ai-result.show { display: block; }
+    .ai-result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .ai-result-icon { font-size: 24px; }
+    .ai-result-title { font-size: 16px; font-weight: 800; }
+    .ai-result-text { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .ai-result-points { font-family: 'Space Mono', monospace; font-size: 20px; color: var(--gold); margin-top: 8px; }
+
+    .ai-loading {
+      width: 100%; max-width: 360px;
+      text-align: center; padding: 24px;
+      display: none;
+    }
+    .ai-loading.show { display: block; }
+    .spinner {
+      width: 40px; height: 40px; margin: 0 auto 12px;
+      border: 3px solid var(--surface2);
+      border-top-color: var(--accent2);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ai-loading p { font-size: 14px; color: var(--muted); }
+
+    /* ── SETTINGS ── */
+    #screen-settings { justify-content: flex-start; padding-top: 60px; }
+
+    .settings-section { width: 100%; max-width: 360px; margin-bottom: 20px; }
+    .settings-label { font-size: 11px; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px; }
+
+    .setting-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 8px;
+    }
+    .setting-info h4 { font-size: 14px; font-weight: 700; }
+    .setting-info p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .time-stepper {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .stepper-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text); font-size: 20px; cursor: pointer;
+    }
+    .stepper-val {
+      font-family: 'Space Mono', monospace; font-size: 16px; min-width: 60px; text-align: center;
+    }
+
+    /* ── HISTORY ── */
+    #screen-history { justify-content: flex-start; padding-top: 60px; }
+
+    .history-list { width: 100%; max-width: 360px; }
+    .history-item {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px; margin-bottom: 10px;
+    }
+    .history-icon { font-size: 28px; }
+    .history-info { flex: 1; }
+    .history-info h4 { font-size: 14px; font-weight: 700; }
+    .history-info p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .history-pts { font-family: 'Space Mono', monospace; font-size: 14px; color: var(--gold); }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      padding: 12px 20px calc(env(safe-area-inset-bottom,0px) + 12px);
+      background: rgba(10,10,15,0.95);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around;
+      z-index: 100;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      cursor: pointer; flex: 1;
+      color: var(--muted); transition: color 0.2s;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    }
+    .nav-item.active { color: var(--accent2); }
+    .nav-icon { font-size: 22px; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 20px;
+      font-size: 14px; font-weight: 700;
+      z-index: 999; white-space: nowrap;
+      opacity: 0; transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ── CONFETTI ── */
+    .confetti-particle {
+      position: fixed; width: 8px; height: 8px; border-radius: 2px;
+      pointer-events: none; z-index: 9999;
+      animation: fall 1.5s ease-in forwards;
+    }
+    @keyframes fall {
+      0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* ── ONBOARDING ── */
+    .onboard-steps { display: flex; gap: 6px; margin-bottom: 32px; }
+    .onboard-dot {
+      width: 28px; height: 4px; border-radius: 99px;
+      background: var(--surface2); transition: background 0.3s;
+    }
+    .onboard-dot.active { background: var(--accent2); }
+
+    /* ── API KEY SETUP ── */
+    .api-input {
+      width: 100%; max-width: 360px; margin-bottom: 12px;
+    }
+    .api-input input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; color: var(--text);
+      font-family: 'Space Mono', monospace; font-size: 13px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .api-input input:focus { border-color: var(--accent2); }
+    .api-hint { font-size: 12px; color: var(--muted); text-align: center; max-width: 300px; line-height: 1.6; }
+
+    /* scrollbar hide */
+    ::-webkit-scrollbar { display: none; }
+
+    /* ── DIVIDER ── */
+    .divider { width: 100%; max-width: 360px; height: 1px; background: var(--border); margin: 8px 0 20px; }
+
+    .w-full { width: 100%; max-width: 360px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ -->
+<!--  SCREEN: ONBOARDING / SETUP        -->
+<!-- ═══════════════════════════════════ -->
+<div id="screen-onboard" class="screen active">
+  <div class="logo">FocusUp</div>
+  <h1 class="hero-title">Controle<br/>seu tempo.<br/>Ganhe vida.</h1>
+  <p class="hero-sub">Quando o tempo acaba, você precisa completar tarefas reais para desbloquear mais tempo de tela.</p>
+
+  <div class="onboard-steps">
+    <div class="onboard-dot active" id="dot-0"></div>
+    <div class="onboard-dot" id="dot-1"></div>
+    <div class="onboard-dot" id="dot-2"></div>
+  </div>
+
+  <div id="onboard-step-0" style="width:100%;max-width:360px">
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:16px">Quanto tempo diário de tela?</div>
+      <div class="time-stepper" style="justify-content:center">
+        <div class="stepper-btn" onclick="changeSetupTime(-15)">−</div>
+        <div class="stepper-val" id="setup-time-val">60 min</div>
+        <div class="stepper-btn" onclick="changeSetupTime(+15)">+</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="nextOnboard(1)">Continuar →</button>
+  </div>
+
+  <div id="onboard-step-1" style="width:100%;max-width:360px;display:none">
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-bottom:14px">Chave API Anthropic (Claude)</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">A IA usará sua câmera para verificar se você realmente fez a tarefa. Cole sua chave abaixo:</p>
+      <div class="api-input" style="margin-bottom:8px">
+        <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." />
+      </div>
+      <p class="api-hint">Crie grátis em <strong style="color:var(--accent2)">console.anthropic.com</strong><br/>Os dados ficam <strong>apenas no seu celular</strong>.</p>
+    </div>
+    <button class="btn btn-primary" onclick="nextOnboard(2)">Continuar →</button>
+    <button class="btn btn-outline" onclick="nextOnboard(2)">Pular (usar modo demo)</button>
+  </div>
+
+  <div id="onboard-step-2" style="width:100%;max-width:360px;display:none">
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-size:30px;text-align:center;margin-bottom:12px">🎯</div>
+      <div style="font-size:15px;font-weight:700;text-align:center;margin-bottom:8px">Tudo pronto!</div>
+      <p style="font-size:13px;color:var(--muted);text-align:center;line-height:1.6">Você tem <strong id="confirm-time" style="color:var(--accent2)"></strong> de tela por dia.<br/>Ao acabar, complete tarefas produtivas para ganhar mais tempo.</p>
+    </div>
+    <button class="btn btn-primary" onclick="finishOnboard()">🚀 Começar agora</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!--  SCREEN: TIMER                     -->
+<!-- ═══════════════════════════════════ -->
+<div id="screen-timer" class="screen">
+  <div class="timer-header">
+    <div>
+      <div class="logo" style="margin-bottom:0">FocusUp</div>
+      <div class="timer-label" id="timer-date"></div>
+    </div>
+    <div class="points-badge">
+      ⭐ <span id="nav-points">0</span>
+    </div>
+  </div>
+
+  <div class="clock-ring">
+    <svg viewBox="0 0 220 220">
+      <defs>
+        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#7c3aed"/>
+          <stop offset="100%" stop-color="#a855f7"/>
+        </linearGradient>
+      </defs>
+      <circle class="bg-ring" cx="110" cy="110" r="100"/>
+      <circle class="prog-ring" id="prog-ring" cx="110" cy="110" r="100"/>
+    </svg>
+    <div class="clock-center">
+      <div class="time-display" id="time-display">--:--</div>
+      <div class="time-sublabel">restando hoje</div>
+    </div>
+  </div>
+
+  <div class="sessions-row">
+    <div class="session-card">
+      <div class="session-val" id="stat-tasks">0</div>
+      <div class="session-lbl">Tarefas feitas</div>
+    </div>
+    <div class="session-card">
+      <div class="session-val" id="stat-earned">0m</div>
+      <div class="session-lbl">Tempo ganho</div>
+    </div>
+    <div class="session-card">
+      <div class="session-val" id="stat-streak">0🔥</div>
+      <div class="session-lbl">Sequência</div>
+    </div>
+  </div>
+
+  <div class="timer-actions">
+    <button class="btn btn-red" onclick="simulateLock()" id="btn-lock">🔒 Bloquear agora (teste)</button>
+  </div>
+
+  <div style="height:80px"></div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!--  SCREEN: LOCKED                    -->
+<!-- ═══════════════════════════════════ -->
+<div id="screen-locked" class="screen">
+  <div class="locked-icon">⏰</div>
+  <div class="locked-title">Tempo esgotado!</div>
+  <p class="locked-sub">Seu tempo de tela acabou. Complete uma das tarefas abaixo e envie uma foto para ganhar mais tempo.</p>
+
+  <div class="tasks-grid">
+    <div class="task-card" onclick="selectTask('devocional')" id="task-devocional">
+      <div class="task-icon">🙏</div>
+      <div class="task-name">Devocional</div>
+      <div class="task-reward">+20 min</div>
+    </div>
+    <div class="task-card" onclick="selectTask('exercicio')" id="task-exercicio">
+      <div class="task-icon">🏃</div>
+      <div class="task-name">Exercício</div>
+      <div class="task-reward">+30 min</div>
+    </div>
+    <div class="task-card" onclick="selectTask('estudar')" id="task-estudar">
+      <div class="task-icon">📚</div>
+      <div class="task-name">Estudar</div>
+      <div class="task-reward">+25 min</div>
+    </div>
+    <div class="task-card" onclick="selectTask('quarto')" id="task-quarto">
+      <div class="task-icon">🛏️</div>
+      <div class="task-name">Arrumar quarto</div>
+      <div class="task-reward">+15 min</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="btn-do-task" onclick="goToVerify()" style="margin-bottom:10px;opacity:0.4;pointer-events:none">
+    📸 Fazer tarefa e enviar foto
+  </button>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!--  SCREEN: VERIFY                    -->
+<!-- ═══════════════════════════════════ -->
+<div id="screen-verify" class="screen">
+  <div class="verify-header">
+    <div class="back-btn" onclick="showScreen('locked')">←</div>
+    <div>
+      <div class="verify-title">Verificar tarefa</div>
+      <div class="verify-sub">Envie uma foto para a IA avaliar</div>
+    </div>
+  </div>
+
+  <div class="task-banner" id="verify-banner">
+    <div class="task-banner-icon" id="verify-icon">🙏</div>
+    <div class="task-banner-info">
+      <h3 id="verify-task-name">Devocional</h3>
+      <p id="verify-task-desc">Tire uma foto mostrando sua Bíblia aberta, caderno de anotações ou tela de app de devocional.</p>
+    </div>
+  </div>
+
+  <div class="photo-area">
+    <div class="photo-drop" id="photo-drop" onclick="document.getElementById('fileInput').click()">
+      <div class="photo-drop-icon">📷</div>
+      <div class="photo-drop-label">Toque para abrir a câmera<br/>ou galeria</div>
+      <img id="preview-img" src="" alt="" style="display:none"/>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="handlePhoto(event)"/>
+
+  <div class="ai-loading" id="ai-loading">
+    <div class="spinner"></div>
+    <p>IA analisando sua foto...</p>
+  </div>
+
+  <div class="ai-result" id="ai-result">
+    <div class="ai-result-header">
+      <div class="ai-result-icon" id="result-icon">✅</div>
+      <div class="ai-result-title" id="result-title">Tarefa verificada!</div>
+    </div>
+    <div class="ai-result-text" id="result-text"></div>
+    <div class="ai-result-points" id="result-points"></div>
+  </div>
+
+  <div class="w-full">
+    <button class="btn btn-green" id="btn-send-verify" onclick="sendToAI()" style="margin-bottom:10px;opacity:0.4;pointer-events:none">
+      🤖 Enviar para IA verificar
+    </button>
+    <button class="btn btn-primary" id="btn-claim" onclick="claimReward()" style="display:none">
+      ⭐ Resgatar tempo ganho!
+    </button>
+  </div>
+
+  <div style="height:30px"></div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!--  SCREEN: HISTORY                   -->
+<!-- ═══════════════════════════════════ -->
+<div id="screen-history" class="screen">
+  <div class="verify-header" style="margin-bottom:24px">
+    <div style="font-size:22px;font-weight:800">📊 Histórico</div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-label">Conquistas hoje</div>
+    <div class="sessions-row" style="margin-bottom:0">
+      <div class="session-card">
+        <div class="session-val" id="h-tasks">0</div>
+        <div class="session-lbl">Tarefas</div>
+      </div>
+      <div class="session-card">
+        <div class="session-val" id="h-pts">0</div>
+        <div class="session-lbl">Pontos</div>
+      </div>
+      <div class="session-card">
+        <div class="session-val" id="h-earned">0m</div>
+        <div class="session-lbl">Ganho</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="history-list" id="history-list">
+    <div style="text-align:center;color:var(--muted);padding:40px 0;font-size:14px">
+      Nenhuma tarefa ainda hoje 🌱
+    </div>
+  </div>
+
+  <div style="height:80px"></div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!--  SCREEN: SETTINGS                  -->
+<!-- ═══════════════════════════════════ -->
+<div id="screen-settings" class="screen">
+  <div class="verify-header" style="margin-bottom:24px">
+    <div style="font-size:22px;font-weight:800">⚙️ Configurações</div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-label">Tempo de tela diário</div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <h4>Limite diário</h4>
+        <p>Tempo total antes de bloquear</p>
+      </div>
+      <div class="time-stepper">
+        <div class="stepper-btn" onclick="changeDailyTime(-15)">−</div>
+        <div class="stepper-val" id="settings-daily-val">60 min</div>
+        <div class="stepper-btn" onclick="changeDailyTime(+15)">+</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-label">Chave API Anthropic</div>
+    <div class="card">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">Necessária para que a IA verifique suas fotos.</p>
+      <div class="api-input" style="margin-bottom:8px">
+        <input type="password" id="settings-api-key" placeholder="sk-ant-api03-..." />
+      </div>
+      <button class="btn btn-outline btn-sm" style="max-width:100%" onclick="saveApiKey()">Salvar chave</button>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-label">Dados</div>
+    <button class="btn btn-outline" style="max-width:360px;margin-bottom:8px" onclick="resetDay()">
+      🔄 Reiniciar dia
+    </button>
+    <button class="btn btn-red btn-sm" style="max-width:360px" onclick="resetAll()">
+      ⚠️ Apagar tudo
+    </button>
+  </div>
+
+  <div style="height:80px"></div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!--  BOTTOM NAVIGATION                 -->
+<!-- ═══════════════════════════════════ -->
+<nav class="bottom-nav" id="bottom-nav" style="display:none">
+  <div class="nav-item active" id="nav-timer" onclick="navTo('timer')">
+    <div class="nav-icon">⏱️</div>
+    <span>Tempo</span>
+  </div>
+  <div class="nav-item" id="nav-history" onclick="navTo('history')">
+    <div class="nav-icon">📊</div>
+    <span>Histórico</span>
+  </div>
+  <div class="nav-item" id="nav-settings" onclick="navTo('settings')">
+    <div class="nav-icon">⚙️</div>
+    <span>Config</span>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let state = {
+  setupDone: false,
+  dailyMinutes: 60,
+  remainingSeconds: 3600,
+  totalSeconds: 3600,
+  points: 0,
+  tasksToday: 0,
+  earnedToday: 0,
+  streak: 0,
+  lastDate: '',
+  history: [],
+  apiKey: '',
+  locked: false
+};
+
+const TASKS = {
+  devocional: { icon:'🙏', name:'Devocional', desc:'Tire uma foto mostrando sua Bíblia aberta, caderno de devocional ou app de leitura bíblica.', reward:20, points:50, aiHint:'Bible open, devotional journal, or a Bible reading app on a phone' },
+  exercicio:  { icon:'🏃', name:'Exercício',  desc:'Foto mostrando você se exercitando, seu equipamento, ou uma captura de tela do treino.',   reward:30, points:80, aiHint:'person exercising, gym equipment, workout clothes, running shoes, fitness app screenshot' },
+  estudar:    { icon:'📚', name:'Estudar',    desc:'Foto do seu material de estudo: livro aberto, caderno com anotações, ou tela de curso.', reward:25, points:60, aiHint:'open textbook, study notes in a notebook, or educational content on screen' },
+  quarto:     { icon:'🛏️', name:'Arrumar quarto', desc:'Foto do seu quarto organizado, cama arrumada ou superfícies limpas.', reward:15, points:40, aiHint:'tidy bedroom, made bed, organized room, clean surfaces' }
+};
+
+let selectedTask = null;
+let capturedImageBase64 = null;
+let timerInterval = null;
+let setupTimeMinutes = 60;
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+function init() {
+  const saved = localStorage.getItem('focusup_state');
+  if (saved) {
+    try { Object.assign(state, JSON.parse(saved)); } catch(e) {}
+  }
+
+  const today = new Date().toDateString();
+  if (state.lastDate !== today) {
+    // new day reset
+    state.remainingSeconds = state.totalSeconds;
+    state.tasksToday = 0;
+    state.earnedToday = 0;
+    state.history = [];
+    state.locked = false;
+    state.lastDate = today;
+    saveState();
+  }
+
+  if (state.setupDone) {
+    showMainApp();
+  }
+}
+
+function showMainApp() {
+  showScreen('timer');
+  document.getElementById('bottom-nav').style.display = 'flex';
+  startTimer();
+  updateTimerUI();
+  updateHistoryUI();
+  updateSettingsUI();
+}
+
+// ══════════════════════════════════════
+//  ONBOARDING
+// ══════════════════════════════════════
+function changeSetupTime(delta) {
+  setupTimeMinutes = Math.max(15, Math.min(480, setupTimeMinutes + delta));
+  document.getElementById('setup-time-val').textContent = setupTimeMinutes + ' min';
+}
+
+function nextOnboard(step) {
+  if (step === 2) {
+    // save API key if entered
+    const key = document.getElementById('api-key-input').value.trim();
+    if (key) state.apiKey = key;
+    document.getElementById('confirm-time').textContent = setupTimeMinutes + ' minutos';
+  }
+  document.getElementById('onboard-step-' + (step-1)).style.display = 'none';
+  document.getElementById('onboard-step-' + step).style.display = 'block';
+  document.querySelectorAll('.onboard-dot').forEach((d,i) => d.classList.toggle('active', i === step));
+}
+
+function finishOnboard() {
+  state.dailyMinutes = setupTimeMinutes;
+  state.totalSeconds = setupTimeMinutes * 60;
+  state.remainingSeconds = state.totalSeconds;
+  state.setupDone = true;
+  state.lastDate = new Date().toDateString();
+  saveState();
+  showMainApp();
+}
+
+// ══════════════════════════════════════
+//  SCREENS
+// ══════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function navTo(id) {
+  showScreen(id);
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('nav-' + id)?.classList.add('active');
+  if (id === 'history') updateHistoryUI();
+  if (id === 'settings') updateSettingsUI();
+}
+
+// ══════════════════════════════════════
+//  TIMER
+// ══════════════════════════════════════
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (state.locked) return;
+    state.remainingSeconds = Math.max(0, state.remainingSeconds - 1);
+    saveState();
+    updateTimerUI();
+    if (state.remainingSeconds <= 0 && !state.locked) {
+      lock();
+    }
+  }, 1000);
+}
+
+function updateTimerUI() {
+  const s = state.remainingSeconds;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  document.getElementById('time-display').textContent =
+    String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+
+  // ring
+  const pct = s / state.totalSeconds;
+  const circumference = 2 * Math.PI * 100; // r=100
+  const offset = circumference * (1 - pct);
+  document.getElementById('prog-ring').style.strokeDashoffset = offset;
+
+  // color ring based on remaining
+  const ring = document.getElementById('prog-ring');
+  if (pct < 0.2) ring.style.stroke = '#ef4444';
+  else if (pct < 0.4) ring.style.stroke = '#f59e0b';
+  else ring.style.stroke = 'url(#ringGrad)';
+
+  // stats
+  document.getElementById('nav-points').textContent = state.points;
+  document.getElementById('stat-tasks').textContent = state.tasksToday;
+  document.getElementById('stat-earned').textContent = state.earnedToday + 'm';
+  document.getElementById('stat-streak').textContent = state.streak + '🔥';
+
+  // date
+  const now = new Date();
+  document.getElementById('timer-date').textContent =
+    now.toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'short'});
+}
+
+function simulateLock() {
+  state.remainingSeconds = 0;
+  lock();
+}
+
+function lock() {
+  state.locked = true;
+  saveState();
+  showScreen('locked');
+  document.getElementById('bottom-nav').style.display = 'none';
+  resetTaskSelection();
+}
+
+// ══════════════════════════════════════
+//  TASK SELECTION
+// ══════════════════════════════════════
+function selectTask(id) {
+  selectedTask = id;
+  document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('task-' + id).classList.add('selected');
+  const btn = document.getElementById('btn-do-task');
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'auto';
+}
+
+function resetTaskSelection() {
+  selectedTask = null;
+  document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+  const btn = document.getElementById('btn-do-task');
+  btn.style.opacity = '0.4';
+  btn.style.pointerEvents = 'none';
+}
+
+function goToVerify() {
+  if (!selectedTask) return;
+  const t = TASKS[selectedTask];
+  document.getElementById('verify-icon').textContent = t.icon;
+  document.getElementById('verify-task-name').textContent = t.name;
+  document.getElementById('verify-task-desc').textContent = t.desc;
+  capturedImageBase64 = null;
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('photo-drop').querySelector('.photo-drop-icon').style.display = 'block';
+  document.getElementById('photo-drop').querySelector('.photo-drop-label').style.display = 'block';
+  document.getElementById('ai-loading').classList.remove('show');
+  document.getElementById('ai-result').classList.remove('show');
+  const btnSend = document.getElementById('btn-send-verify');
+  btnSend.style.opacity = '0.4';
+  btnSend.style.pointerEvents = 'none';
+  document.getElementById('btn-claim').style.display = 'none';
+  showScreen('verify');
+}
+
+// ══════════════════════════════════════
+//  PHOTO
+// ══════════════════════════════════════
+function handlePhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    capturedImageBase64 = dataUrl.split(',')[1];
+    const img = document.getElementById('preview-img');
+    img.src = dataUrl;
+    img.style.display = 'block';
+    document.getElementById('photo-drop').querySelector('.photo-drop-icon').style.display = 'none';
+    document.getElementById('photo-drop').querySelector('.photo-drop-label').style.display = 'none';
+    const btn = document.getElementById('btn-send-verify');
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+    document.getElementById('ai-result').classList.remove('show');
+    document.getElementById('btn-claim').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════
+//  AI VERIFICATION
+// ══════════════════════════════════════
+async function sendToAI() {
+  if (!capturedImageBase64 || !selectedTask) return;
+
+  document.getElementById('ai-loading').classList.add('show');
+  document.getElementById('ai-result').classList.remove('show');
+  document.getElementById('btn-send-verify').style.opacity = '0.4';
+  document.getElementById('btn-send-verify').style.pointerEvents = 'none';
+
+  const task = TASKS[selectedTask];
+  const apiKey = state.apiKey;
+
+  // If no API key → demo mode
+  if (!apiKey || apiKey.length < 20) {
+    await sleep(2000);
+    document.getElementById('ai-loading').classList.remove('show');
+    showAIResult(true, `Modo demo: Tarefa "${task.name}" verificada! (Configure sua chave API para verificação real.)`, task.reward, task.points);
+    return;
+  }
+
+  try {
+    const prompt = `You are a strict but fair verification assistant for a productivity app. 
+    
+The user claims to have completed this task: "${task.name}".
+Hint of what to look for: ${task.aiHint}
+
+Look at the photo carefully. Determine if it genuinely shows evidence of the task being completed.
+
+Respond ONLY in this exact JSON format (no other text):
+{"approved": true/false, "reason": "brief explanation in Portuguese (1-2 sentences)", "confidence": 0-100}
+
+Be strict but reasonable. If you can clearly see evidence of the task, approve it.`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: capturedImageBase64 }},
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content[0].text;
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+
+    document.getElementById('ai-loading').classList.remove('show');
+    showAIResult(parsed.approved, parsed.reason, parsed.approved ? task.reward : 0, parsed.approved ? task.points : 0);
+
+  } catch(err) {
+    console.error(err);
+    document.getElementById('ai-loading').classList.remove('show');
+    // fallback demo on error
+    showAIResult(true, `Verificação local: tarefa "${task.name}" registrada! (Erro ao conectar com IA)`, task.reward, task.points);
+  }
+}
+
+function showAIResult(approved, reason, rewardMin, pts) {
+  const res = document.getElementById('ai-result');
+  res.className = 'ai-result show ' + (approved ? 'success' : 'fail');
+  document.getElementById('result-icon').textContent = approved ? '✅' : '❌';
+  document.getElementById('result-title').textContent = approved ? 'Tarefa aprovada!' : 'Tarefa não aprovada';
+  document.getElementById('result-text').textContent = reason;
+  document.getElementById('result-points').textContent = approved ? `+${rewardMin} min • +${pts} pts` : '';
+
+  if (approved) {
+    document.getElementById('btn-claim').style.display = 'flex';
+    document.getElementById('btn-claim').dataset.reward = rewardMin;
+    document.getElementById('btn-claim').dataset.pts = pts;
+  } else {
+    document.getElementById('btn-send-verify').style.opacity = '1';
+    document.getElementById('btn-send-verify').style.pointerEvents = 'auto';
+    document.getElementById('btn-send-verify').textContent = '📸 Tentar com outra foto';
+    capturedImageBase64 = null;
+    document.getElementById('preview-img').style.display = 'none';
+    document.getElementById('photo-drop').querySelector('.photo-drop-icon').style.display = 'block';
+    document.getElementById('photo-drop').querySelector('.photo-drop-label').style.display = 'block';
+  }
+}
+
+function claimReward() {
+  const btn = document.getElementById('btn-claim');
+  const rewardMin = parseInt(btn.dataset.reward);
+  const pts = parseInt(btn.dataset.pts);
+  const task = TASKS[selectedTask];
+
+  state.remainingSeconds += rewardMin * 60;
+  state.totalSeconds = Math.max(state.totalSeconds, state.remainingSeconds);
+  state.points += pts;
+  state.tasksToday++;
+  state.earnedToday += rewardMin;
+  state.locked = false;
+  state.history.unshift({
+    task: selectedTask,
+    icon: task.icon,
+    name: task.name,
+    pts: pts,
+    reward: rewardMin,
+    time: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})
+  });
+
+  saveState();
+  confetti();
+  showToast(`+${rewardMin} min e +${pts} pts ganhos! 🎉`);
+
+  setTimeout(() => {
+    document.getElementById('bottom-nav').style.display = 'flex';
+    navTo('timer');
+    updateTimerUI();
+  }, 800);
+}
+
+// ══════════════════════════════════════
+//  HISTORY & SETTINGS
+// ══════════════════════════════════════
+function updateHistoryUI() {
+  document.getElementById('h-tasks').textContent = state.tasksToday;
+  document.getElementById('h-pts').textContent = state.points;
+  document.getElementById('h-earned').textContent = state.earnedToday + 'm';
+
+  const list = document.getElementById('history-list');
+  if (!state.history.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px 0;font-size:14px">Nenhuma tarefa ainda hoje 🌱</div>';
+    return;
+  }
+  list.innerHTML = state.history.map(h => `
+    <div class="history-item">
+      <div class="history-icon">${h.icon}</div>
+      <div class="history-info">
+        <h4>${h.name}</h4>
+        <p>${h.time} • +${h.reward} min</p>
+      </div>
+      <div class="history-pts">+${h.pts}pts</div>
+    </div>
+  `).join('');
+}
+
+function updateSettingsUI() {
+  document.getElementById('settings-daily-val').textContent = state.dailyMinutes + ' min';
+  if (state.apiKey) document.getElementById('settings-api-key').value = state.apiKey;
+}
+
+function changeDailyTime(delta) {
+  state.dailyMinutes = Math.max(15, Math.min(480, state.dailyMinutes + delta));
+  state.totalSeconds = state.dailyMinutes * 60;
+  document.getElementById('settings-daily-val').textContent = state.dailyMinutes + ' min';
+  saveState();
+}
+
+function saveApiKey() {
+  const key = document.getElementById('settings-api-key').value.trim();
+  state.apiKey = key;
+  saveState();
+  showToast('Chave salva! ✓');
+}
+
+function resetDay() {
+  state.remainingSeconds = state.totalSeconds;
+  state.tasksToday = 0;
+  state.earnedToday = 0;
+  state.history = [];
+  state.locked = false;
+  state.lastDate = new Date().toDateString();
+  saveState();
+  updateTimerUI();
+  updateHistoryUI();
+  showToast('Dia reiniciado ✓');
+}
+
+function resetAll() {
+  if (confirm('Apagar todos os dados?')) {
+    localStorage.removeItem('focusup_state');
+    location.reload();
+  }
+}
+
+// ══════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════
+function saveState() {
+  localStorage.setItem('focusup_state', JSON.stringify(state));
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function confetti() {
+  const colors = ['#7c3aed','#a855f7','#f59e0b','#10b981','#fff','#ec4899'];
+  for (let i = 0; i < 40; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.className = 'confetti-particle';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.top = '-10px';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      p.style.animationDelay = Math.random() * 0.5 + 's';
+      p.style.animationDuration = (1 + Math.random()) + 's';
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 2500);
+    }, i * 30);
+  }
+}
+
+// ══════════════════════════════════════
+//  MANIFEST (inline PWA)
+// ══════════════════════════════════════
+(function injectManifest() {
+  const manifest = {
+    name: 'FocusUp — Controle de Tela',
+    short_name: 'FocusUp',
+    description: 'Reduza seu tempo de tela completando tarefas produtivas',
+    start_url: '.',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#0a0a0f',
+    theme_color: '#0a0a0f',
+    icons: [
+      { src: 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#0a0a0f"/><text x="96" y="130" font-size="110" text-anchor="middle">⏱️</text></svg>`), sizes: '192x192', type: 'image/svg+xml' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('link');
+  link.rel = 'manifest'; link.href = url;
+  document.head.appendChild(link);
+})();
+
+// ══════════════════════════════════════
+//  START
+// ══════════════════════════════════════
+init();
+</script>
+</body>
+</html>
